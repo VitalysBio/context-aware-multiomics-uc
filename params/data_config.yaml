@@ -1,0 +1,45 @@
+project:
+  name: context-aware-multiomics-uc
+  disease: urothelial_carcinoma
+  primary_discovery_cohort: tcga_blca
+  external_validation_cohort: imvigor210
+
+data:
+  create_data_dirs_on_run: true
+
+  directories:
+    raw: data/raw
+    interim: data/interim
+    processed: data/processed
+    external: data/external
+
+datasets:
+  tcga_blca:
+    enabled: true
+    source: gdc
+    project_id: TCGA-BLCA
+    description: >
+      Discovery cohort for multi-omics integration, clustering, and survival-linked stratification.
+    modalities:
+      - rna_seq
+      - somatic_mutations
+      - cnv
+      - clinical
+    output_subdir: tcga_blca
+
+  imvigor210:
+    enabled: false
+    source: external_public_study
+    description: >
+      External validation cohort for immunotherapy response prediction.
+    modalities:
+      - expression
+      - clinical
+      - response
+    output_subdir: imvigor210
+
+download:
+  tcga:
+    use_gdc_client: false
+    manifest_file: ""
+    base_url: ""
