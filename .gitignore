@@ -27,7 +27,7 @@ artifacts/
 
 # Environment files
 .env
-
+.venv/
 # Pytest / coverage
 .pytest_cache/
 .coverage
