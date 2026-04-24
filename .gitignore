@@ -18,7 +18,16 @@ Thumbs.db
 .idea/
 
 # Data
-data/
+data/*
+!data/external/
+data/external/*
+!data/external/tcga_blca/
+data/external/tcga_blca/*
+!data/external/tcga_blca/manifests/
+data/external/tcga_blca/manifests/*
+!data/external/tcga_blca/manifests/README.md
+
+# Reports
 reports/
 artifacts/
 
