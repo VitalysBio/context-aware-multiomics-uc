@@ -15,6 +15,7 @@ numba==0.65.1
 numpy==2.4.4
 packaging==26.2
 pandas==2.3.3
+patsy==1.0.2
 pillow==12.2.0
 pynndescent==0.6.0
 pyparsing==3.3.2
@@ -24,6 +25,7 @@ PyYAML==6.0.3
 scikit-learn==1.8.0
 scipy==1.17.1
 six==1.17.0
+statsmodels==0.14.6
 threadpoolctl==3.6.0
 tqdm==4.67.3
 typing_extensions==4.15.0
