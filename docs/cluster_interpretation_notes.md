@@ -16,8 +16,7 @@ Kaplan-Meier analysis showed significant survival differences across clusters us
 
 Global log-rank p-value:
 
-```text
-5.77e-03```
+5.77e-03
 
 This suggests that transcriptomic stratification captures clinically relevant tumor biology.
 
