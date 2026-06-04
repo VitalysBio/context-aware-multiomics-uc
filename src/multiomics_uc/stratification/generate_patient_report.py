@@ -20,8 +20,7 @@ CLUSTER_PROFILES = {
         ],
         "interpretation": (
             "This profile suggests a tumor state dominated by stromal remodeling, "
-            "extracellular matrix organization, and EMT-like programs. This state was "
-            "associated with poorer prognosis in the transcriptomic survival analysis."
+            "extracellular matrix organization, and EMT-like programs."
         ),
     },
     "1": {
@@ -33,9 +32,8 @@ CLUSTER_PROFILES = {
             "Epithelial differentiation",
         ],
         "interpretation": (
-            "This profile suggests a more differentiated luminal-like tumor state with "
-            "metabolic and epithelial organization programs. This cluster showed a more "
-            "favorable survival profile compared with stromal and basal-like groups."
+            "This profile suggests a more differentiated luminal-like tumor state "
+            "with metabolic and epithelial organization programs."
         ),
     },
     "2": {
@@ -48,9 +46,8 @@ CLUSTER_PROFILES = {
             "High CDKN2A deletion tendency",
         ],
         "interpretation": (
-            "This profile suggests a basal/squamous tumor state characterized by keratinization, "
-            "inflammatory signaling, and frequent CDKN2A loss. This group was associated with "
-            "poorer prognosis and a more aggressive transcriptomic phenotype."
+            "This profile suggests a basal/squamous tumor state characterized by "
+            "keratinization, inflammatory signaling, and frequent CDKN2A loss."
         ),
     },
     "3": {
@@ -63,22 +60,22 @@ CLUSTER_PROFILES = {
             "EMT / microenvironment remodeling",
         ],
         "interpretation": (
-            "This profile suggests a tumor state enriched in immune and microenvironmental "
-            "signals, including myeloid/macrophage-associated programs and stromal remodeling. "
-            "This cluster may represent a biologically mixed immune-stromal phenotype."
+            "This profile suggests a tumor state enriched in immune and "
+            "microenvironmental signals, including myeloid/macrophage-associated "
+            "programs and stromal remodeling."
         ),
     },
 }
 
 
-LATENT_PROGRAMS = {
-    "PC1": "Macrophage-rich immune-stromal infiltration",
-    "PC2": "Angiogenic / vascular stromal microenvironment versus basal-squamous axis",
-    "PC3": "Cell-cycle, mitosis and proliferation",
-    "PC4": "Motility and cytoskeletal remodeling",
-    "PC6": "IFN-driven immune activation versus EMT / ECM remodeling",
-    "PC8": "RTK / RHO / MET invasion signaling",
-    "PC9": "Differentiation, cilium organization and epithelial structure",
+PROGRAM_DESCRIPTIONS = {
+    "immune_infiltration": "macrophage-rich immune-stromal infiltration",
+    "angiogenic_stroma": "angiogenic and vascular stromal remodeling",
+    "proliferation": "cell-cycle and proliferative activity",
+    "motility_cytoskeleton": "motility and cytoskeletal remodeling",
+    "immune_activation": "IFN-associated immune activation",
+    "invasion_signaling": "RTK / RHO / MET invasion signaling",
+    "differentiation": "epithelial differentiation and ciliary organization",
 }
 
 
@@ -106,6 +103,11 @@ def load_features() -> pd.DataFrame:
     return pd.read_csv(path)
 
 
+def load_percentiles() -> pd.DataFrame:
+    path = get_path_from_root("data/processed/program_percentiles.csv")
+    return pd.read_csv(path)
+
+
 def get_patient_row(df: pd.DataFrame, patient_id: str) -> pd.Series:
     subset = df[df["patient_id"] == patient_id]
 
@@ -125,6 +127,18 @@ def classify_uncertainty(row: pd.Series) -> str:
     return "Low confidence / ambiguous assignment"
 
 
+def classify_percentile(value: float) -> str:
+    if value >= 80:
+        return "high"
+    if value >= 60:
+        return "moderately high"
+    if value <= 20:
+        return "low"
+    if value <= 40:
+        return "moderately low"
+    return "intermediate"
+
+
 def get_probability_table(row: pd.Series) -> str:
     prob_cols = [
         col for col in row.index
@@ -135,8 +149,7 @@ def get_probability_table(row: pd.Series) -> str:
 
     for col in sorted(prob_cols):
         cluster = col.replace("prob_cluster_", "")
-        profile = CLUSTER_PROFILES.get(cluster, {})
-        name = profile.get("name", "Unknown")
+        name = CLUSTER_PROFILES.get(cluster, {}).get("name", "Unknown")
         probability = float(row[col])
 
         lines.append(
@@ -168,37 +181,123 @@ def get_mutation_summary(feature_row: pd.Series) -> str:
     return "\n".join(lines)
 
 
-def get_latent_program_summary(feature_row: pd.Series) -> str:
-    pcs = ["PC1", "PC2", "PC3", "PC4", "PC6", "PC8", "PC9"]
-
+def build_program_percentile_table(percentile_row: pd.Series) -> str:
     lines = []
 
-    for pc in pcs:
-        if pc not in feature_row.index:
+    for program, description in PROGRAM_DESCRIPTIONS.items():
+        col = f"{program}_percentile"
+
+        if col not in percentile_row.index:
             continue
 
-        value = float(feature_row[pc])
-        meaning = LATENT_PROGRAMS[pc]
-
-        direction = "High" if value > 0 else "Low"
+        value = float(percentile_row[col])
+        category = classify_percentile(value)
 
         lines.append(
-            f"| {pc} | {value:.3f} | {direction} | {meaning} |"
+            f"| {description} | {value:.1f} | {category} |"
         )
 
     return "\n".join(lines)
+
+
+def build_biological_narrative(percentile_row: pd.Series) -> str:
+    high_programs = []
+    low_programs = []
+    moderate_high_programs = []
+
+    for program, description in PROGRAM_DESCRIPTIONS.items():
+        col = f"{program}_percentile"
+
+        if col not in percentile_row.index:
+            continue
+
+        value = float(percentile_row[col])
+
+        if value >= 80:
+            high_programs.append(description)
+        elif value >= 60:
+            moderate_high_programs.append(description)
+
+        if value <= 20:
+            low_programs.append(description)
+
+    sentences = []
+
+    if high_programs:
+        sentences.append(
+            "The strongest biological signals in this patient are "
+            + ", ".join(high_programs)
+            + "."
+        )
+
+    if moderate_high_programs:
+        sentences.append(
+            "Moderately elevated programs include "
+            + ", ".join(moderate_high_programs)
+            + "."
+        )
+
+    if low_programs:
+        sentences.append(
+            "Low relative programs include "
+            + ", ".join(low_programs)
+            + "."
+        )
+
+    if not sentences:
+        sentences.append(
+            "This patient shows an intermediate profile across the major latent biological programs."
+        )
+
+    return " ".join(sentences)
+
+
+def build_similarity_comment(prediction_row: pd.Series) -> str:
+    prob_cols = [
+        col for col in prediction_row.index
+        if col.startswith("prob_cluster_")
+    ]
+
+    probs = {
+        col.replace("prob_cluster_", ""): float(prediction_row[col])
+        for col in prob_cols
+    }
+
+    sorted_probs = sorted(
+        probs.items(),
+        key=lambda x: x[1],
+        reverse=True,
+    )
+
+    top_cluster, top_prob = sorted_probs[0]
+    second_cluster, second_prob = sorted_probs[1]
+
+    top_name = CLUSTER_PROFILES[top_cluster]["name"]
+    second_name = CLUSTER_PROFILES[second_cluster]["name"]
+
+    if second_prob >= 0.20:
+        return (
+            f"The tumor is primarily assigned to Cluster {top_cluster} "
+            f"({top_name}), but it also shows partial similarity to Cluster "
+            f"{second_cluster} ({second_name})."
+        )
+
+    return (
+        f"The tumor is predominantly assigned to Cluster {top_cluster} "
+        f"({top_name}), with limited similarity to other clusters."
+    )
 
 
 def generate_report(
     patient_id: str,
     prediction_row: pd.Series,
     feature_row: pd.Series,
+    percentile_row: pd.Series,
 ) -> str:
     predicted_cluster = str(prediction_row["predicted_cluster"])
     true_cluster = str(prediction_row["rnaseq_cluster"])
 
     profile = CLUSTER_PROFILES[predicted_cluster]
-
     uncertainty_label = classify_uncertainty(prediction_row)
 
     mutation_burden = feature_row.get("mutation_burden", "NA")
@@ -232,23 +331,33 @@ def generate_report(
 |---|---|---:|
 {get_probability_table(prediction_row)}
 
+{build_similarity_comment(prediction_row)}
+
 ---
 
-## Biological Interpretation
+## Cluster-Level Biological Interpretation
 
 {profile["interpretation"]}
 
-Main biological programs associated with this predicted state:
+Main biological programs associated with this predicted cluster:
 
 {chr(10).join([f"- {item}" for item in profile["biology"]])}
 
 ---
 
-## Latent Transcriptomic Program Profile
+## Patient-Specific Latent Biological Program Percentiles
 
-| Program | Patient score | Direction | Biological interpretation |
-|---|---:|---|---|
-{get_latent_program_summary(feature_row)}
+| Biological program | Cohort percentile | Category |
+|---|---:|---|
+{build_program_percentile_table(percentile_row)}
+
+---
+
+## Patient-Specific Biological State Interpretation
+
+{build_biological_narrative(percentile_row)}
+
+Percentiles are computed relative to the TCGA-BLCA cohort used in this project. High percentiles indicate that the patient has stronger activity of that latent biological program compared with most patients in the cohort.
 
 ---
 
@@ -272,7 +381,7 @@ Main biological programs associated with this predicted state:
 
 This report summarizes a context-aware biological assignment derived from transcriptomic latent programs, driver mutation features, and clinical information. The predicted tumor state should be interpreted as a probabilistic biological profile rather than a deterministic diagnostic label.
 
-High-confidence assignments suggest that the patient strongly resembles one of the learned TCGA-BLCA transcriptomic states. Low-confidence assignments may indicate biological ambiguity, mixed tumor programs, or transitional states between clusters.
+A high-confidence assignment suggests that the patient strongly resembles one learned TCGA-BLCA transcriptomic state. Lower-confidence assignments may indicate biological ambiguity, mixed tumor programs, or transitional states between clusters.
 
 ---
 
@@ -289,7 +398,7 @@ def save_report(patient_id: str, report: str) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     safe_id = patient_id.replace("/", "_")
-    out_file = out_dir / f"{safe_id}_patient_stratification_report.md"
+    out_file = out_dir / f"{safe_id}_patient_stratification_report_v2.md"
 
     out_file.write_text(report, encoding="utf-8")
 
@@ -310,6 +419,7 @@ def main() -> int:
     try:
         predictions = load_predictions()
         features = load_features()
+        percentiles = load_percentiles()
 
         prediction_row = get_patient_row(
             predictions,
@@ -321,10 +431,16 @@ def main() -> int:
             args.patient_id,
         )
 
+        percentile_row = get_patient_row(
+            percentiles,
+            args.patient_id,
+        )
+
         report = generate_report(
             args.patient_id,
             prediction_row,
             feature_row,
+            percentile_row,
         )
 
         out_file = save_report(
@@ -332,7 +448,7 @@ def main() -> int:
             report,
         )
 
-        print(f"[OK] Saved patient report: {out_file}")
+        print(f"[OK] Saved patient report v2: {out_file}")
 
         return 0
 
