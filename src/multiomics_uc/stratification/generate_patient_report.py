@@ -138,6 +138,34 @@ def classify_percentile(value: float) -> str:
         return "moderately low"
     return "intermediate"
 
+def interpret_mutation_burden_percentile(value: float) -> str:
+    if pd.isna(value):
+        return "Mutation burden percentile is not available."
+
+    if value >= 80:
+        return (
+            "This tumor has a high mutation burden relative to the TCGA-BLCA cohort, "
+            "which may reflect increased genomic instability and potentially higher neoantigen load."
+        )
+
+    if value >= 60:
+        return (
+            "This tumor has a moderately elevated mutation burden relative to the TCGA-BLCA cohort."
+        )
+
+    if value <= 20:
+        return (
+            "This tumor has a low mutation burden relative to the TCGA-BLCA cohort."
+        )
+
+    if value <= 40:
+        return (
+            "This tumor has a moderately low mutation burden relative to the TCGA-BLCA cohort."
+        )
+
+    return (
+        "This tumor has an intermediate mutation burden relative to the TCGA-BLCA cohort."
+    )
 
 def get_probability_table(row: pd.Series) -> str:
     prob_cols = [
@@ -302,6 +330,15 @@ def generate_report(
 
     mutation_burden = feature_row.get("mutation_burden", "NA")
 
+    mutation_burden_percentile = percentile_row.get(
+        "mutation_burden_percentile",
+        None,
+    )
+
+    mutation_burden_interpretation = interpret_mutation_burden_percentile(
+        mutation_burden_percentile
+    )
+
     report = f"""# Patient Stratification Report
 
 ## Patient ID
@@ -369,11 +406,14 @@ Percentiles are computed relative to the TCGA-BLCA cohort used in this project. 
 
 ---
 
-## Mutation Burden
+## Mutation Burden Context
 
 | Feature | Value |
 |---|---:|
 | Mutation burden | {mutation_burden} |
+| Mutation burden percentile | {float(mutation_burden_percentile):.1f} |
+
+{mutation_burden_interpretation}
 
 ---
 
