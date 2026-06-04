@@ -10,7 +10,7 @@ from statsmodels.stats.multitest import multipletests
 from multiomics_uc.paths import get_path_from_root
 
 
-PCS_TO_INTERPRET = ["PC1", "PC3", "PC4", "PC6", "PC8", "PC9"]
+PCS_TO_INTERPRET = ["PC1", "PC2", "PC3", "PC4", "PC6", "PC8", "PC9"]
 TOP_N = 300
 
 

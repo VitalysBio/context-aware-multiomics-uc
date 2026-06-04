@@ -11,7 +11,7 @@ from scipy.stats import kruskal
 from multiomics_uc.paths import get_path_from_root
 
 
-PCS = ["PC1", "PC3", "PC4", "PC6", "PC8", "PC9"]
+PCS = ["PC1", "PC2", "PC3", "PC4", "PC6", "PC8", "PC9"]
 
 
 def load_embeddings() -> pd.DataFrame:
